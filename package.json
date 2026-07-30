@@ -1,0 +1,16 @@
+{
+  "name": "minecraft-mineflayer-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal Mineflayer agent with a browser first-person viewer",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "mineflayer": "latest",
+    "mineflayer-pathfinder": "latest",
+    "mineflayer-pvp": "latest",
+    "prismarine-viewer": "latest"
+  }
+}
