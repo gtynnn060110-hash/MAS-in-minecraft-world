@@ -1,296 +1,141 @@
-# Mineflayer Minecraft Agent：完整安装与运行指南
+# Mineflayer PvP Agent Demo
 
-本项目演示一个最小的 Minecraft agent：
+这是一个最小的 Minecraft Java Edition agent。它使用 Mineflayer 连接一个已经存在的 Minecraft 服务器，并自动追踪、接近和持续攻击指定玩家。
 
-- 使用 Mineflayer 作为无界面 Minecraft Java 客户端；
-- 使用 Docker 在本机运行免费的 Minecraft Java Server；
-- agent 进入服务器后自动追踪并持续攻击指定玩家；
-- 使用 Prismarine Viewer 在浏览器显示 agent 的第一人称画面；
-- 不需要购买或安装 Minecraft Java Edition 客户端。
+当前实现包含：
 
-> 本项目用于本地教学演示。服务器仅监听本机端口，且关闭了正版账号验证，请不要直接暴露到公网。
+- 连接 Minecraft Java 服务器或本地 LAN 世界；
+- 自动识别服务器协议版本；
+- 使用 `TARGET_PLAYER` 指定攻击目标；
+- 未指定目标时选择距离最近的其他玩家；
+- 使用 Pathfinder 自动追踪目标；
+- 使用 PvP 插件持续攻击目标；
+- 目标消失或重生后重新锁定；
+- 在浏览器显示 bot 的第一人称画面；
+- 在终端输出连接、目标、生命值和食物值；
+- Windows 一键启动脚本。
 
-## 1. 系统结构
-
-```text
-浏览器
-  │
-  │ http://localhost:3007
-  ▼
-Prismarine Viewer
-  │
-Mineflayer Agent
-  │
-  │ Minecraft protocol: localhost:25565
-  ▼
-Docker 中的 Minecraft Java Server
-```
-
-Mineflayer 本身不渲染官方 Minecraft 游戏窗口。浏览器里的 Prismarine Viewer 会根据服务器数据渲染 agent 的第一人称世界。
-
-## 2. 前置条件
-
-需要安装：
-
-- macOS、Windows 或 Linux；
-- Docker Desktop；
-- Node.js 18 或以上，推荐 Node.js 20 LTS；
-- npm，通常随 Node.js 一起安装；
-- 至少约 4 GB 可用内存；
-- 第一次安装时需要互联网连接，用于下载 Docker 镜像和 npm 包。
-
-不需要：
-
-- Minecraft 付费账号；
-- Minecraft Launcher；
-- Python 或 Conda；
-- MineRL、MineDojo；
-- 手动安装 Java。Minecraft Server 使用的 Java 已包含在 Docker 镜像中。
-
-## 3. 获取项目
-
-项目目录应包含：
+## 1. 项目结构
 
 ```text
 final project/
 ├── bot.js
-├── compose.yaml
 ├── package.json
+├── package-lock.json
+├── start-windows.bat
 └── README.md
 ```
 
-进入项目：
+核心运行结构：
 
-```bash
-cd "/Users/gtynnn/Documents/Learning/UK_summer/learning/final project"
+```text
+已有 Minecraft Java Server / LAN 世界
+                  ↕
+        Mineflayer PvP Agent
+                  ↓
+       http://localhost:3007
+        第一人称浏览器画面
 ```
 
-如果项目位于其他位置，请将路径替换成实际路径。
+Mineflayer 是无界面 Minecraft 客户端。它不会启动官方 Minecraft 游戏窗口，因此必须先有一个可以连接的 Minecraft Java 服务器或 LAN 世界。
 
-## 4. 安装 Docker Desktop
+## 2. 环境要求
 
-### macOS
+- Windows、macOS 或 Linux；
+- Node.js 18 以上，推荐 Node.js 20 LTS；
+- npm，通常随 Node.js 一起安装；
+- 一个允许 bot 加入的 Minecraft Java 服务器；
+- 第一次执行 `npm install` 时需要网络。
 
-使用 Homebrew：
-
-```bash
-brew install --cask docker
-```
-
-也可以从 Docker 官方网站下载 Docker Desktop。
-
-安装后必须从“应用程序”中打开 Docker，并等待菜单栏显示 Docker 已运行。
-
-验证：
-
-```bash
-docker --version
-docker compose version
-```
-
-### Windows
-
-1. 安装 Docker Desktop；
-2. 根据安装提示启用 WSL 2；
-3. 启动 Docker Desktop；
-4. 在 PowerShell 中验证：
-
-```powershell
-docker --version
-docker compose version
-```
-
-### Linux
-
-安装 Docker Engine 和 Docker Compose Plugin，然后验证：
-
-```bash
-docker --version
-docker compose version
-```
-
-## 5. 安装 Node.js
-
-推荐 Node.js 20 LTS。
-
-### macOS
-
-```bash
-brew install node@20
-```
-
-如果 Homebrew 提示 `node@20` 未链接：
-
-```bash
-brew link --overwrite --force node@20
-```
-
-### 使用 nvm
-
-如果已经安装 nvm：
-
-```bash
-nvm install 20
-nvm use 20
-```
-
-验证：
+检查 Node.js 和 npm：
 
 ```bash
 node --version
 npm --version
 ```
 
-Node.js 应显示 `v20.x.x`。Node 18、20 和部分更新版本也可运行，但 Node 20 LTS 通常兼容性最好。
+## 3. 安装依赖
 
-## 6. 安装 Agent 依赖
+进入项目目录：
 
-在项目目录执行：
+```bash
+cd "final project"
+```
+
+安装：
 
 ```bash
 npm install
 ```
 
-它会安装：
+`package.json` 当前包含：
 
-- `canvas`：为 Viewer 提供 Node.js Canvas 图形能力；
-- `mineflayer`：Minecraft bot API；
-- `mineflayer-pathfinder`：追踪目标时自动寻路；
-- `mineflayer-pvp`：玩家追踪和持续攻击；
-- `prismarine-viewer`：浏览器第一人称画面。
+- `mineflayer`：Minecraft bot 客户端；
+- `mineflayer-pathfinder`：追踪玩家和自动寻路；
+- `mineflayer-pvp`：持续攻击；
+- `prismarine-viewer`：浏览器第一人称画面；
+- `canvas`：Viewer 使用的图形能力。
 
-验证依赖：
-
-```bash
-npm list canvas mineflayer mineflayer-pathfinder mineflayer-pvp prismarine-viewer
-```
-
-## 7. 启动本地 Minecraft Server
-
-项目通过 `compose.yaml` 启动 Paper Minecraft Server 1.21.1。
+验证：
 
 ```bash
-docker compose up -d
+npm list --depth=0
 ```
 
-第一次运行需要下载镜像、Minecraft Server 和世界文件，可能需要几分钟。
+## 4. 准备 Minecraft 世界
 
-实时查看日志：
+### 方式 A：连接已有服务器
 
-```bash
-docker compose logs -f minecraft
-```
+需要知道：
 
-当日志出现以下内容时，服务器已经准备好：
+- 服务器 IP 或域名；
+- 服务器端口；
+- 服务器是否启用正版账号验证；
+- 服务器是否允许 bot。
 
-```text
-Done (...)! For help, type "help"
-```
+本项目默认使用离线认证，只适合自己控制的本地或可信测试服务器。
 
-按 `Ctrl+C` 只会退出日志查看，不会关闭服务器。
+### 方式 B：使用 Minecraft Java 单人 LAN 世界
 
-查看服务器状态：
+1. 启动 Minecraft Launcher；
+2. 选择 `Minecraft: Java Edition`；
+3. 进入一个单人世界；
+4. 按 `Esc`；
+5. 点击“对局域网开放 / Open to LAN”；
+6. 点击“创建一个局域网世界 / Start LAN World”；
+7. 记下聊天栏显示的端口，例如 `5091`。
 
-```bash
-docker compose ps
-```
+退出单人世界后 LAN 服务会关闭。再次开放时端口可能改变。
 
-服务器地址为：
+## 5. Windows 一键启动
 
-```text
-localhost:25565
-```
-
-## 8. 启动 Mineflayer Agent
-
-### Windows 一键启动
-
-Windows 用户可以直接双击：
+双击：
 
 ```text
 start-windows.bat
 ```
 
-脚本会自动：
+脚本会：
 
-1. 进入项目目录；
+1. 自动进入项目目录；
 2. 检查 Node.js 和 npm；
-3. 首次运行时执行 `npm install`；
-4. 询问服务器地址、端口、bot 名称和目标玩家名；
-5. 启动 agent。
+3. 缺少依赖时运行 `npm install`；
+4. 询问服务器地址；
+5. 询问服务器端口；
+6. 询问 bot 名称；
+7. 询问目标玩家名；
+8. 启动 agent。
 
-本机 Docker 服务器使用默认值时，服务器地址和端口直接按回车即可：
+连接本机 LAN 世界的输入示例：
 
 ```text
 Server address [localhost]:
-Server port [25565]:
+Server port [25565]: 5091
 Bot name [CourseAgent]:
 Target player name (required): Steve
 ```
 
-启动后浏览器打开：
-
-```text
-http://localhost:3007
-```
-
-如果 Windows 阻止运行，右键 `start-windows.bat`，选择“打开”。该脚本只执行项目目录中的 npm 安装和启动命令。
-
-### 命令行启动
-
-另外打开一个终端，进入项目目录：
-
-```bash
-cd "/Users/gtynnn/Documents/Learning/UK_summer/learning/final project"
-npm start
-```
-
-默认配置：
-
-```text
-服务器：localhost
-端口：25565
-bot 名称：CourseAgent
-认证模式：offline
-Viewer 端口：3007
-```
-
-连接成功后终端会显示：
-
-```text
-Bot spawned in Minecraft.
-First-person view: http://localhost:3007
-```
-
-如果不设置目标，agent 会选择距离最近的其他玩家并持续追击。推荐明确指定目标玩家名：
-
-macOS、Linux 或 Git Bash：
-
-```bash
-TARGET_PLAYER=PlayerName npm start
-```
-
-Windows PowerShell：
-
-```powershell
-$env:TARGET_PLAYER="PlayerName"
-npm start
-```
-
-Windows CMD：
-
-```bat
-set TARGET_PLAYER=PlayerName
-npm start
-```
-
-将 `PlayerName` 替换成目标玩家在游戏中的准确名称，区分大小写。目标玩家进入服务器后，终端会显示：
-
-```text
-Attacking player: PlayerName
-```
-
-如果目标玩家死亡并重生，agent 会重新锁定新生成的玩家实体。
+方括号中的内容是默认值。服务器地址和 bot 名称可直接按回车；LAN 端口需要填写游戏聊天栏显示的实际端口。
 
 停止 agent：
 
@@ -298,54 +143,98 @@ Attacking player: PlayerName
 Ctrl+C
 ```
 
-## 9. 查看 Minecraft 游戏画面
+## 6. 命令行启动
 
-在浏览器打开：
+### Windows PowerShell
+
+```powershell
+cd "C:\项目路径\final project"
+$env:MC_PORT="5091"
+$env:TARGET_PLAYER="Steve"
+npm start
+```
+
+### Windows CMD
+
+```bat
+cd /d "C:\项目路径\final project"
+set MC_PORT=5091
+set TARGET_PLAYER=Steve
+npm start
+```
+
+### macOS、Linux 或 Git Bash
+
+```bash
+cd "final project"
+MC_PORT=5091 TARGET_PLAYER=Steve npm start
+```
+
+连接另一台机器上的服务器：
+
+```bash
+MC_HOST=192.168.1.100 \
+MC_PORT=25565 \
+TARGET_PLAYER=Steve \
+npm start
+```
+
+## 7. 配置参数
+
+| 环境变量 | 默认值 | 当前作用 |
+|---|---|---|
+| `MC_HOST` | `localhost` | Minecraft 服务器地址 |
+| `MC_PORT` | `25565` | Minecraft 服务器端口 |
+| `MC_USERNAME` | `CourseAgent` | bot 名称或登录账号 |
+| `MC_AUTH` | `offline` | `offline` 或 `microsoft` |
+| `TARGET_PLAYER` | 未设置 | 指定攻击目标 |
+| `VIEWER_PORT` | `3007` | 第一人称网页端口 |
+
+如果不设置 `TARGET_PLAYER`，bot 会选择当前距离最近的其他玩家。
+
+## 8. 运行效果
+
+连接成功后终端显示：
+
+```text
+Bot spawned in Minecraft.
+First-person view: http://localhost:3007
+```
+
+锁定目标后显示：
+
+```text
+Attacking player: Steve
+```
+
+如果目标尚未进入服务器：
+
+```text
+Waiting for target player: Steve
+```
+
+目标进入或重生后，bot 会再次尝试锁定。
+
+## 9. 查看第一人称画面
+
+浏览器打开：
 
 ```text
 http://localhost:3007
 ```
 
-这里会显示 `CourseAgent` 的第一人称实时画面。
+这是 bot 的第一人称实时画面。它由 Prismarine Viewer 根据服务器发送的数据渲染，不是官方 Minecraft 客户端画面。
 
-如果页面刚打开时世界尚未显示：
-
-1. 等待服务器区块生成；
-2. 刷新浏览器；
-3. 检查 agent 终端是否出现 `Bot spawned in Minecraft`；
-4. 检查端口 `3007` 是否被其他程序占用。
-
-## 10. 自定义连接参数
-
-项目使用环境变量配置连接。
-
-### 修改 bot 名称
-
-```bash
-MC_USERNAME=MyAgent npm start
-```
-
-### 使用不同服务器端口
-
-```bash
-MC_PORT=25566 npm start
-```
-
-指定服务器端口和攻击目标：
-
-```bash
-MC_PORT=25566 TARGET_PLAYER=PlayerName npm start
-```
+若 `3007` 被占用，可修改端口。
 
 Windows PowerShell：
 
 ```powershell
-$env:MC_PORT="25566"
-$env:TARGET_PLAYER="PlayerName"
+$env:VIEWER_PORT="3008"
 npm start
 ```
 
-### 使用不同 Viewer 端口
+macOS、Linux 或 Git Bash：
 
 ```bash
 VIEWER_PORT=3008 npm start
@@ -357,179 +246,92 @@ VIEWER_PORT=3008 npm start
 http://localhost:3008
 ```
 
-### 连接另一台机器上的服务器
+## 10. 正版认证服务器
 
-```bash
-MC_HOST=192.168.1.100 MC_PORT=25565 npm start
-```
-
-只有可信局域网环境才应使用离线认证。不要把当前关闭正版验证的服务器直接开放到公网。
-
-## 11. 服务器管理
-
-### 停止服务器但保留世界
-
-```bash
-docker compose stop
-```
-
-### 再次启动
-
-```bash
-docker compose start
-```
-
-### 停止并移除服务器容器
-
-```bash
-docker compose down
-```
-
-世界数据仍保存在 Docker volume 中。
-
-### 查看日志
-
-```bash
-docker compose logs --tail=100 minecraft
-```
-
-### 重置世界
-
-以下命令会永久删除当前 Minecraft 世界：
-
-```bash
-docker compose down -v
-docker compose up -d
-```
-
-不要在需要保留世界时使用 `-v`。
-
-## 12. 常见错误
-
-### `Cannot connect to the Docker daemon`
-
-Docker Desktop 尚未启动。打开 Docker Desktop，等待其完成初始化，再执行：
-
-```bash
-docker compose up -d
-```
-
-### Agent 显示 `ECONNREFUSED`
-
-Minecraft Server 尚未准备好。检查：
-
-```bash
-docker compose ps
-docker compose logs --tail=100 minecraft
-```
-
-等待日志出现 `Done` 后再运行 `npm start`。
-
-### `port is already allocated`
-
-本机的 `25565` 已被占用。编辑 `compose.yaml`：
-
-```yaml
-ports:
-  - "25566:25565"
-```
-
-重启服务器：
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-然后这样启动 agent：
-
-```bash
-MC_PORT=25566 npm start
-```
-
-### Viewer 的 `3007` 端口被占用
-
-```bash
-VIEWER_PORT=3008 npm start
-```
-
-访问：
+默认配置：
 
 ```text
-http://localhost:3008
+MC_AUTH=offline
 ```
 
-### Agent 被踢出并提示认证失败
+它只适合关闭正版验证的本地测试服务器或 LAN 世界。
 
-确认 `compose.yaml` 包含：
+连接启用正版验证的服务器时，需要使用 Microsoft 登录。
 
-```yaml
-ONLINE_MODE: "FALSE"
-```
+Windows PowerShell：
 
-然后重建容器：
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-### Minecraft 协议版本不支持
-
-本项目固定服务器版本：
-
-```yaml
-VERSION: "1.21.1"
-```
-
-不要随意改成 Minecraft 最新快照版本。若修改服务器版本，应先确认当前 Mineflayer 版本支持它。
-
-### Apple Silicon
-
-Docker Desktop 会自动选择兼容的 ARM64 镜像。这个方案不使用旧 MineRL/Forge，因此不需要 Rosetta、Java 8 或 x86 Conda 环境。
-
-## 13. 完整启动顺序
-
-每次演示只需要：
-
-```bash
-cd "/Users/gtynnn/Documents/Learning/UK_summer/learning/final project"
-docker compose up -d
-docker compose logs -f minecraft
-```
-
-看到 `Done` 后按 `Ctrl+C` 退出日志，再执行：
-
-```bash
+```powershell
+$env:MC_HOST="服务器地址"
+$env:MC_PORT="25565"
+$env:MC_AUTH="microsoft"
+$env:MC_USERNAME="微软账号邮箱"
+$env:TARGET_PLAYER="Steve"
 npm start
 ```
 
-最后在浏览器打开：
+首次运行会要求通过浏览器完成设备登录。不要把账号密码写入 `bot.js`。
 
-```text
-http://localhost:3007
-```
+## 11. 常见错误
 
-演示结束：
+### `ECONNREFUSED`
 
-```text
-先在 agent 终端按 Ctrl+C
-```
+服务器地址或端口错误，或者服务器尚未启动。
 
-然后停止服务器：
+LAN 世界需要确认：
+
+- Minecraft 世界仍然打开；
+- 已经执行“对局域网开放”；
+- 使用聊天栏显示的最新端口。
+
+### `Unsupported protocol version`
+
+服务器的 Minecraft 版本尚未被当前 Mineflayer 支持。升级项目依赖：
 
 ```bash
-docker compose stop
+npm update
 ```
 
-## 14. EULA 与安全说明
+如果仍然失败，需要换用 Mineflayer 支持的 Minecraft Java 版本。
 
-`compose.yaml` 中的：
+### `Failed to verify username`
 
-```yaml
-EULA: "TRUE"
+服务器启用了正版认证，但 bot 使用了 `offline` 模式。改为 `MC_AUTH=microsoft` 并使用拥有 Minecraft Java Edition 的 Microsoft 账号。
+
+### 找不到目标玩家
+
+确认：
+
+- `TARGET_PLAYER` 与游戏内名称完全一致；
+- 名称大小写正确；
+- 目标玩家已经进入同一个服务器；
+- 目标玩家在 bot 已加载的区域内。
+
+### Viewer 无法打开
+
+先确认终端已经显示：
+
+```text
+First-person view: http://localhost:3007
 ```
 
-表示运行者同意 Minecraft End User License Agreement。使用前应自行阅读并确认接受相关条款。
+若没有，检查 agent 是否成功进入服务器以及终端是否出现错误。
 
-`ONLINE_MODE: "FALSE"` 关闭了 Microsoft/Mojang 账号认证，仅适合本机教学实验。当前配置只映射 Minecraft 游戏端口，不应通过路由器端口转发、云服务器安全组或公网隧道公开该服务。
+### Windows 安装 `canvas` 失败
+
+优先使用 Node.js 20 LTS，然后删除旧依赖并重新安装：
+
+Windows PowerShell：
+
+```powershell
+Remove-Item -Recurse -Force node_modules
+Remove-Item -Force package-lock.json
+npm install
+```
+
+只有安装仍然失败时才需要执行以上清理操作。
+
+## 12. 安全与使用范围
+
+该 agent 会主动追踪并攻击玩家。只应在自己控制的测试服务器，或所有参与者明确同意的环境中运行。
+
+不要在未经允许的公共服务器使用，也不要尝试绕过服务器认证、反作弊或访问限制。
