@@ -153,6 +153,7 @@ npm install
 
 它会安装：
 
+- `canvas`：为 Viewer 提供 Node.js Canvas 图形能力；
 - `mineflayer`：Minecraft bot API；
 - `mineflayer-pathfinder`：追踪目标时自动寻路；
 - `mineflayer-pvp`：玩家追踪和持续攻击；
@@ -161,7 +162,7 @@ npm install
 验证依赖：
 
 ```bash
-npm list mineflayer mineflayer-pathfinder mineflayer-pvp prismarine-viewer
+npm list canvas mineflayer mineflayer-pathfinder mineflayer-pvp prismarine-viewer
 ```
 
 ## 7. 启动本地 Minecraft Server
@@ -201,6 +202,41 @@ localhost:25565
 ```
 
 ## 8. 启动 Mineflayer Agent
+
+### Windows 一键启动
+
+Windows 用户可以直接双击：
+
+```text
+start-windows.bat
+```
+
+脚本会自动：
+
+1. 进入项目目录；
+2. 检查 Node.js 和 npm；
+3. 首次运行时执行 `npm install`；
+4. 询问服务器地址、端口、bot 名称和目标玩家名；
+5. 启动 agent。
+
+本机 Docker 服务器使用默认值时，服务器地址和端口直接按回车即可：
+
+```text
+Server address [localhost]:
+Server port [25565]:
+Bot name [CourseAgent]:
+Target player name (required): Steve
+```
+
+启动后浏览器打开：
+
+```text
+http://localhost:3007
+```
+
+如果 Windows 阻止运行，右键 `start-windows.bat`，选择“打开”。该脚本只执行项目目录中的 npm 安装和启动命令。
+
+### 命令行启动
 
 另外打开一个终端，进入项目目录：
 

@@ -8,6 +8,7 @@
     "start": "node bot.js"
   },
   "dependencies": {
+    "canvas": "latest",
     "mineflayer": "latest",
     "mineflayer-pathfinder": "latest",
     "mineflayer-pvp": "latest",
